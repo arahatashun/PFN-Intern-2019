@@ -4,6 +4,7 @@
 """Graph Neural Network file"""
 import numpy as np
 import warnings
+EPS = 0.001
 
 class GNN:
     """Graph neural network class"""
@@ -141,23 +142,23 @@ class GNN:
         for i in range(A.shape[0]):
             onehot = [0 if j !=i else 1 for j in range(A.shape[0])]
             onehot = np.array(onehot).reshape(A.shape[0], 1)
-            p2 = self.calc_prob(W, A + np.finfo(float).eps * onehot ,b)
+            p2 = self.calc_prob(W, A + EPS * onehot, b)
             l2 = self.loss(y,p2)
-            grad = (l2-l1)/np.finfo(float).eps
+            grad = (l2-l1)/EPS
             gradA[i] = grad
-        p2 = self.calc_prob(W, A, b + np.finfo(float).eps)
+        p2 = self.calc_prob(W, A, b + EPS)
         l2 = self.loss(y, p2)
-        gradB = (l2 - l1) / np.finfo(float).eps
+        gradB = (l2 - l1) / EPS
         tmpW = np.copy(W)
         gradW = np.zeros_like(W)
         for i in range(W.shape[0]):
             for j in range(W.shape[1]):
                 onehot = [0 if k != j else 1 for k in range(W.shape[1])]
                 onehot = np.array(onehot).reshape(1, W.shape[1])
-                tmpW[i,:] = np.finfo(float).eps * onehot
+                tmpW[i,:] = EPS * onehot
                 p2 = self.calc_prob(tmpW, A, b)
                 l2 = self.loss(y, p2)
-                grad = (l2 - l1) / np.finfo(float).eps
+                grad = (l2 - l1) / EPS
                 gradW[i][j] = grad
 
         grad = {"A": gradA, "b": gradB, "W": gradW}
@@ -178,7 +179,7 @@ class GNN:
         itr = 0
         print("iteration:", itr, " ,loss:", l[0][0])
         while(l>=0.01):
-             grad = self.calc_gradient(W,A,b,y)
+             grad = self.calc_gradient(W, A, b, y)
              W = W - alpha * grad["W"]
              A = A - alpha * grad["A"]
              b = b - alpha * grad["b"]

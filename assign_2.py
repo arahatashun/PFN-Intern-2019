@@ -21,11 +21,12 @@ def main():
     ])
     y = 1
     g = GNN(N, D, edge, x, W)
-    alpha = 0.0001
+    alpha = 0.001
     A = np.array([0.0, 0.0, 0.0, 0.0]).reshape(4, 1)
     b = 0
     g.GD(alpha, W, A, b, y)
-
-
 if __name__ == '__main__':
     main()
+
+# iteration: 103148  ,loss: 0.0099999332089
+# を確認

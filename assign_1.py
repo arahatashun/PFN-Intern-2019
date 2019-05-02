@@ -22,7 +22,7 @@ def main():
     g = GNN(N, D, edge, x, W)
     a = g.aggregate_1(x)
     # print(a)
-    #print(W @ a)
+    # print(W @ a)
     nx = g.aggregate_2(W,a)
     # print(nx)
     h = g.readout(nx)

@@ -79,14 +79,16 @@ class GNN:
             h += x[:, v].reshape(self.D, 1)
         return h
 
-    def readout_all(self, W):
+    def readout_all(self, W, T):
         """ aggragation and readout
 
-        :param x:feature vector on vertex
+        :param W:weight matrix
+        :param T:# step of aggregation
         :return h:
         """
-        a = self.aggregate_1(self.x)
-        nx = self.aggregate_2(W, a)
+        for i in range(T):
+            a = self.aggregate_1(self.x)
+            nx = self.aggregate_2(W, a)
         h = self.readout(nx)
         return h
 
@@ -94,16 +96,17 @@ class GNN:
     def sigmoid(x):
         return 1.0 / (1.0 + np.exp(-x))
 
-    def calc_prob(self, W, A, b):
+    def calc_prob(self, W, A, b, T):
         """ calculate probability
 
         :param W: weight matrix of graph
         :param A: parameter of classifier R^D vector
         :param b: parameter of classifier R
+        :param T:# step of aggregation
         :return p: probability
         """
-        assert A.shape == (self.D,1), """dimension mismatch"""
-        s = A.T @ self.readout_all(W) + b
+        assert A.shape == (self.D, 1), """dimension mismatch"""
+        s = A.T @ self.readout_all(W, T) + b
         p = self.sigmoid(s)
         assert p.shape == (1, 1), "dimension mismatch in calc_prob"
         return p
@@ -127,26 +130,27 @@ class GNN:
         return l
 
 
-    def calc_gradient(self, W, A, b, y):
+    def calc_gradient(self, W, A, b, y, T):
         """ calculate gradient
 
         :param W:initial W
         :param A:initial A
         :param b:initial b
         :param y:label
+        :param T: # step of aggregation
         :return:
         """
-        p1 = self.calc_prob(W, A, b)
+        p1 = self.calc_prob(W, A, b, T)
         l1 = self.loss(y, p1)
         gradA = np.zeros_like(A)
         for i in range(A.shape[0]):
             onehot = [0 if j !=i else 1 for j in range(A.shape[0])]
             onehot = np.array(onehot).reshape(A.shape[0], 1)
-            p2 = self.calc_prob(W, A + EPS * onehot, b)
-            l2 = self.loss(y,p2)
+            p2 = self.calc_prob(W, A + EPS * onehot, b, T)
+            l2 = self.loss(y, p2)
             grad = (l2-l1)/EPS
             gradA[i] = grad
-        p2 = self.calc_prob(W, A, b + EPS)
+        p2 = self.calc_prob(W, A, b + EPS, T)
         l2 = self.loss(y, p2)
         gradB = (l2 - l1) / EPS
         tmpW = np.copy(W)
@@ -156,7 +160,7 @@ class GNN:
                 onehot = [0 if k != j else 1 for k in range(W.shape[1])]
                 onehot = np.array(onehot).reshape(1, W.shape[1])
                 tmpW[i,:] = EPS * onehot
-                p2 = self.calc_prob(tmpW, A, b)
+                p2 = self.calc_prob(tmpW, A, b, T)
                 l2 = self.loss(y, p2)
                 grad = (l2 - l1) / EPS
                 gradW[i][j] = grad
@@ -164,7 +168,7 @@ class GNN:
         grad = {"A": gradA, "b": gradB, "W": gradW}
         return grad
 
-    def GD(self, alpha, W, A, b, y):
+    def GD(self, alpha, W, A, b, y, T):
         """ calculate gradient
 
         :param alpha:learing rate
@@ -172,18 +176,19 @@ class GNN:
         :param A:initial A
         :param b:initial b
         :param y:label
+        :param T:# step of aggregation
         :return:
         """
-        p = self.calc_prob(W, A, b)
+        p = self.calc_prob(W, A, b, T)
         l = self.loss(y, p)
         itr = 0
         print("iteration:", itr, " ,loss:", l[0][0])
         while(l>=0.01):
-             grad = self.calc_gradient(W, A, b, y)
+             grad = self.calc_gradient(W, A, b, y, T)
              W = W - alpha * grad["W"]
              A = A - alpha * grad["A"]
              b = b - alpha * grad["b"]
-             p = self.calc_prob(W, A, b)
+             p = self.calc_prob(W, A, b, T)
              l = self.loss(y, p)
              itr += 1
              print("iteration:", itr, " ,loss:",l[0][0])

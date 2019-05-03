@@ -24,7 +24,7 @@ def main():
     alpha = 0.001
     A = np.array([0.0, 0.0, 0.0, 0.0]).reshape(4, 1)
     b = 0
-    g.GD(alpha, W, A, b, y)
+    g.GD(alpha, W, A, b, y, 1)
 if __name__ == '__main__':
     main()
 

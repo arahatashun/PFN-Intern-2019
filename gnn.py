@@ -261,11 +261,8 @@ class GNN:
             sumA += grad["A"]
             sumb += grad["b"]
             loss += grad["loss"]
-        diffW = - alpha / B * sumW + eta * omega["W"]
-        diffA = - alpha / B * sumA + eta * omega["A"]
-        diffb = - alpha / B * sumb + eta * omega["b"]
-        omega["W"] = diffW
-        omega["A"] = diffA
-        omega["b"] = diffb
-        param = {"W": param["W"] + diffW, "A": param["A"] + diffA, "b": param["b"] + diffb}
+        omega["W"] = - alpha / B * sumW + eta * omega["W"]
+        omega["A"] = - alpha / B * sumA + eta * omega["A"]
+        omega["b"] = - alpha / B * sumb + eta * omega["b"]
+        param = {"W": param["W"] + omega["W"], "A": param["A"] + omega["A"], "b": param["b"] + omega["b"]}
         return {"param": param, "loss": loss, "omega": omega}

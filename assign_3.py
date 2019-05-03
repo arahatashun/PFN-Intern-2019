@@ -109,7 +109,7 @@ def momentum_sgd(gnn, batchsize, train_data, alpha, param, T, epochs, eta):
             param = res["param"]
             loss += res["loss"]
             # print("iteration:",i+1,"loss:",res["loss"])
-        print("epoch:", epoch + 1, ", loss:", *loss)
+        print("epoch:", epoch + 1, ", loss:", loss[0][0])
         tmp_train = copy.deepcopy(train_data)
     return res
 
@@ -128,7 +128,7 @@ def check_prediction(test, param):
         p = gnn.predict(W, A, b, T, test[adjacency_matrix])
         if (p == label):
             pos = pos + 1
-
+    print(pos / ntest)
     return pos / ntest
 
 
@@ -150,8 +150,8 @@ def main():
     train_data = train_data[:1800]
     ini = make_initial()
     gnn = GNN(15, 8, ini['x'])
-    res = momentum_sgd(gnn, 30, train_data, 0.001, ini["param"], 2, 2, 0.9)
-    sgd(gnn, 30, train_data, 0.001, ini["param"], 2, 10)
+    res = momentum_sgd(gnn, 30, train_data, 0.001, ini["param"], 2, 3, 0.9)
+    check_prediction(test, res["param"])
 
 
 if __name__ == '__main__':

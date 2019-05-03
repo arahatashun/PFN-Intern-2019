@@ -87,8 +87,9 @@ class GNN:
         :param T:# step of aggregation
         :return h:
         """
+        nx = self.x
         for i in range(T):
-            a = self.aggregate_1(self.x, adjacency_matrix)
+            a = self.aggregate_1(nx, adjacency_matrix)
             nx = self.aggregate_2(W, a)
         h = self.readout(nx)
         return h

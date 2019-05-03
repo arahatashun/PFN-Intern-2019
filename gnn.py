@@ -11,7 +11,7 @@ EPS = 0.001
 class GNN:
     """Graph neural network class"""
 
-    def __init__(self, N, D, x, W):
+    def __init__(self, N, D, x):
         """ constructor
 
         :param N:　# of vetex
@@ -23,7 +23,6 @@ class GNN:
         self.N = N
         self.D = D
         self.x = x
-        self.W = W
 
     def get_adjacency_matrix(self, edge):
         """make adjacency matrix
@@ -52,8 +51,8 @@ class GNN:
         """
         assert x.shape == (self.D, self.N), """x dimension mismatch in aggregate1"""
         a = np.zeros((self.D, self.N))
-        for v in range(self.N):
-            for w in range(self.N):
+        for v in range(adjacency_matrix.shape[0]):
+            for w in range(adjacency_matrix.shape[1]):
                 if (adjacency_matrix[v][w] == 1):
                     a[:, v] += x[:, w]
         return a
@@ -96,7 +95,12 @@ class GNN:
 
     @staticmethod
     def sigmoid(x):
-        return 1.0 / (1.0 + np.exp(-x))
+        with warnings.catch_warnings():
+            warnings.filterwarnings('error')
+            try:
+                return 1.0 / (1.0 + np.exp(-x))
+            except RuntimeWarning as e:
+                return 1.0/-x
 
     def calc_prob(self, W, A, b, T, adjacency_matrix):
         """ calculate probability
@@ -126,7 +130,6 @@ class GNN:
             try:
                 l = -y * np.log(p) - (1 - y) * np.log(1 - p)
             except RuntimeWarning as e:
-                print(e)
                 l = y * np.log(1 + np.exp(-p)) + (1 - y) * np.log(1 + np.exp(p))
         assert l.shape == (1, 1), "dimension mismatch in loss"
         return l
@@ -141,7 +144,7 @@ class GNN:
         :param T: # step of aggregation
         :return:
         """
-        p1 = self.calc_prob(W, A, b, T,adjacency_matrix)
+        p1 = self.calc_prob(W, A, b, T, adjacency_matrix)
         l1 = self.loss(y, p1)
         gradA = np.zeros_like(A)
         for i in range(A.shape[0]):
@@ -166,7 +169,7 @@ class GNN:
                 grad = (l2 - l1) / EPS
                 gradW[i][j] = grad
 
-        grad = {"A": gradA, "b": gradB, "W": gradW}
+        grad = {"A": gradA, "b": gradB, "W": gradW, "loss": l1}
         return grad
 
     def GD(self, alpha, W, A, b, y, T, adjacency_matrix):
@@ -184,15 +187,38 @@ class GNN:
         l = self.loss(y, p)
         itr = 0
         print("iteration:", itr, " ,loss:", l[0][0])
-        while (l >= 0.01):
+        while l >= 0.01:
             grad = self.calc_gradient(W, A, b, y, T, adjacency_matrix)
             W = W - alpha * grad["W"]
             A = A - alpha * grad["A"]
             b = b - alpha * grad["b"]
-            p = self.calc_prob(W, A, b, T, adjacency_matrix)
-            l = self.loss(y, p)
             itr += 1
-            print("iteration:", itr, " ,loss:", l[0][0])
+            print("iteration:", itr, " ,loss:", float(grad['loss']))
 
-    def SGD(self, alpha, W, A, b, y, T):
-        pass
+    def SGD(self, alpha, W, A, b, T, batch):
+        """ Stochastic gradient descent on minibatch
+
+        :param alpha:learning rate
+        :param W:weight matrix
+        :param A:parameter
+        :param b:parameter
+        :param T:# step of aggregation
+        :param batch:list of dict
+        :return:
+        """
+        B = len(batch) # Batch size
+        assert B >= 1, "batch size must be >= 1"+str(batch)
+        sumW = np.zeros_like(W)
+        sumA = np.zeros_like(A)
+        sumb = 0
+        loss = 0
+        for i in range(B):
+            grad = self.calc_gradient(W, A, b, batch[i]['label'], T, batch[i]['adjacency_matrix'])
+            sumW += grad["W"]
+            sumA += grad["A"]
+            sumb += grad["b"]
+            loss += grad["loss"]
+        W = W - alpha/B * sumW
+        A = A - alpha/B * sumA
+        b = b - alpha/B * sumb
+        return {"W": W, "A": A, "b": b, "loss": loss}

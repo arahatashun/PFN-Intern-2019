@@ -19,7 +19,7 @@ def main():
         [-0.4, -0.5, 1, 0],
         [-3, 0,  0, 1],
     ])
-    g = GNN(N, D, x, W)
+    g = GNN(N, D, x)
     a = g.aggregate_1(x,g.get_adjacency_matrix(edge))
     # print(a)
     # print(W @ a)

@@ -5,11 +5,12 @@
 """assignment 3"""
 import numpy as np
 from gnn import GNN
-from operator import itemgetter
 import random
+import copy
 train_path = '../datasets/train/'
-num_train = 2000
+NUM_TRAIN = 2000
 random.seed(1)
+np.random.seed(1)
 
 def read_data(path,index):
     """ read graph and label and return dict
@@ -34,7 +35,7 @@ def read_data(path,index):
 
 def read_train():
     l = []
-    for i in range(num_train):
+    for i in range(NUM_TRAIN):
         l.append(read_data(train_path, i))
     return l
 
@@ -51,12 +52,47 @@ def sampling(B, train):
     return res
 
 
+def sgd(gnn, batchsize, train_data, alpha, W, A, b, T, epochs):
+    """Stochastic Gradient descent
+
+    :param gnn:gnn object
+    :param batchsize:batchsie
+    :param alpha:learning rate
+    :param train_data:train_data
+    :return:
+    """
+    num_train = len(train_data)
+    tmp_train = copy.deepcopy(train_data)
+    # print(num_train, batchsize)
+    for epoch in range(epochs):
+        for i in range(int(num_train/batchsize)-1):
+            mini_batch = sampling(batchsize, tmp_train)
+            res = gnn.SGD(alpha, W, A, b, T, mini_batch)
+            W = res["W"]
+            A = res["A"]
+            b = res["b"]
+            # print("iteration:",i+1,"loss:",res["loss"])
+        print("epoch:", epoch+1, ", loss:", *res["loss"])
+        tmp_train = copy.deepcopy(train_data)
+    return res
+
+
+def make_initial():
+    D = 8
+    N = 14
+    x = np.random.normal(0, 0.4, D * N).reshape(D, N)
+    A = np.random.normal(0, 0.4, D).reshape(D, 1)
+    W = np.random.normal(0, 0.4, D * D).reshape(D, D)
+    b = 0
+    return {"x": x, "A": A, "W": W, "b": b}
+
 def main():
     train_data = read_train()
     random.shuffle(train_data)
-    # print(len(train_data))
-    batch = sampling(3, train_data)
-    print(len(train_data))
+    ini = make_initial()
+    gnn = GNN(14, 8, ini['x'])
+    sgd(gnn, 20, train_data, 0.001, ini["W"], ini["A"], ini["b"], 2, 10)
+
 
 
 if __name__ == '__main__':

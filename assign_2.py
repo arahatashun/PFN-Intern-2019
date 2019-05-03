@@ -20,7 +20,7 @@ def main():
         [-3, 0,  0, 1],
     ])
     y = 1
-    g = GNN(N, D, x, W)
+    g = GNN(N, D, x)
     alpha = 0.001
     A = np.array([0.0, 0.0, 0.0, 0.0]).reshape(4, 1)
     b = 0

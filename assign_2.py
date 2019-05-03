@@ -5,6 +5,7 @@
 import numpy as np
 from gnn import GNN
 
+
 def main():
     N = 4  # 頂点の数
     D = 4  # dimension
@@ -17,15 +18,16 @@ def main():
         [0.5, 0.3, 0, 0],
         [0.2, 0.1, 0, -0.1],
         [-0.4, -0.5, 1, 0],
-        [-3, 0,  0, 1],
+        [-3, 0, 0, 1],
     ])
     y = 1
     g = GNN(N, D, x)
     alpha = 0.001
     A = np.array([0.0, 0.0, 0.0, 0.0]).reshape(4, 1)
     b = 0
-    param = {"W": W, "A":A, "b":b}
+    param = {"W": W, "A": A, "b": b}
     g.GD(alpha, param, y, 1, g.get_adjacency_matrix(edge))
+
 
 if __name__ == '__main__':
     main()

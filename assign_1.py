@@ -5,6 +5,7 @@
 import numpy as np
 from gnn import GNN
 
+
 def main():
     N = 4  # 頂点の数
     D = 4  # dimension
@@ -17,10 +18,10 @@ def main():
         [0.5, 0.3, 0, 0],
         [0.2, 0.1, 0, -0.1],
         [-0.4, -0.5, 1, 0],
-        [-3, 0,  0, 1],
+        [-3, 0, 0, 1],
     ])
     g = GNN(N, D, x)
-    a = g.aggregate_1(x,g.get_adjacency_matrix(edge))
+    a = g.aggregate_1(x, g.get_adjacency_matrix(edge))
     # print(a)
     # print(W @ a)
     nx = g.aggregate_2(W, a)
@@ -32,7 +33,7 @@ def main():
 if __name__ == '__main__':
     main()
 
-#[[1.4]
+# [[1.4]
 # [0.3]
 # [1.1]
 # [1.]]

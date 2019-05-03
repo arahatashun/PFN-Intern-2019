@@ -53,7 +53,7 @@ class GNN:
         a = np.zeros((self.D, self.N))
         for v in range(adjacency_matrix.shape[0]):
             for w in range(adjacency_matrix.shape[1]):
-                if (adjacency_matrix[v][w] == 1):
+                if adjacency_matrix[v][w] == 1:
                     a[:, v] += x[:, w]
         return a
 
@@ -101,7 +101,7 @@ class GNN:
             try:
                 return 1.0 / (1.0 + np.exp(-x))
             except RuntimeWarning as e:
-                return 1.0/-x
+                return 1.0 / -x
 
     def calc_prob(self, param, T, adjacency_matrix):
         """ calculate probability
@@ -125,7 +125,7 @@ class GNN:
         :return:
         """
         p = self.calc_prob(param, T, adjacency_matrix)
-        if p > 1/2:
+        if p > 1 / 2:
             return 1
         else:
             return 0
@@ -164,12 +164,12 @@ class GNN:
         for i in range(A.shape[0]):
             onehot = [0 if j != i else 1 for j in range(A.shape[0])]
             onehot = np.array(onehot).reshape(A.shape[0], 1)
-            tmp = {"W": W, "A":A + EPS * onehot, "b":b}
+            tmp = {"W": W, "A": A + EPS * onehot, "b": b}
             p2 = self.calc_prob(tmp, T, adjacency_matrix)
             l2 = self.loss(y, p2)
             grad = (l2 - l1) / EPS
             gradA[i] = grad
-        tmp = {"W": W, "A": A , "b": b + EPS}
+        tmp = {"W": W, "A": A, "b": b + EPS}
         p2 = self.calc_prob(tmp, T, adjacency_matrix)
         l2 = self.loss(y, p2)
         gradB = (l2 - l1) / EPS
@@ -180,7 +180,7 @@ class GNN:
                 onehot = [0 if k != j else 1 for k in range(W.shape[1])]
                 onehot = np.array(onehot).reshape(1, W.shape[1])
                 tmpW[i, :] = EPS * onehot
-                tmp = {"W": tmpW, "A": A , "b": b}
+                tmp = {"W": tmpW, "A": A, "b": b}
                 p2 = self.calc_prob(tmp, T, adjacency_matrix)
                 l2 = self.loss(y, p2)
                 grad = (l2 - l1) / EPS
@@ -220,8 +220,8 @@ class GNN:
         :param batch:list of dict
         :return:
         """
-        B = len(batch) # Batch size
-        assert B >= 1, "batch size must be >= 1"+str(batch)
+        B = len(batch)  # Batch size
+        assert B >= 1, "batch size must be >= 1" + str(batch)
         sumW = np.zeros_like(param["W"])
         sumA = np.zeros_like(param["A"])
         sumb = 0
@@ -232,10 +232,11 @@ class GNN:
             sumA += grad["A"]
             sumb += grad["b"]
             loss += grad["loss"]
-        W = param["W"] - alpha/B * sumW
-        A = param["A"] - alpha/B * sumA
-        b = param["b"] - alpha/B * sumb
-        return {"W": W, "A": A, "b": b, "loss": loss}
+        W = param["W"] - alpha / B * sumW
+        A = param["A"] - alpha / B * sumA
+        b = param["b"] - alpha / B * sumb
+        param = {"W": W, "A": A, "b": b}
+        return {"param": param, "loss": loss}
 
     def Momentum_SGD(self, alpha, param, T, batch, omega, eta):
         """ Momentum Stochastic gradient descent on minibatch
@@ -248,8 +249,8 @@ class GNN:
         :param eta: mement parameter
         :return:
         """
-        B = len(batch) # Batch size
-        assert B >= 1, "batch size must be >= 1"+str(batch)
+        B = len(batch)  # Batch size
+        assert B >= 1, "batch size must be >= 1" + str(batch)
         sumW = np.zeros_like(param["W"])
         sumA = np.zeros_like(param["A"])
         sumb = 0
@@ -260,13 +261,11 @@ class GNN:
             sumA += grad["A"]
             sumb += grad["b"]
             loss += grad["loss"]
-        diffW = - alpha/B * sumW + eta * omega["W"]
-        diffA = - alpha/B * sumA + eta * omega["A"]
-        diffb = - alpha/B * sumb + eta * omega["b"]
+        diffW = - alpha / B * sumW + eta * omega["W"]
+        diffA = - alpha / B * sumA + eta * omega["A"]
+        diffb = - alpha / B * sumb + eta * omega["b"]
         omega["W"] = diffW
         omega["A"] = diffA
         omega["b"] = diffb
-        W = param["W"] + diffW
-        A = param["A"] + diffA
-        b = param["b"] + diffb
-        return {"W": W, "A": A, "b": b, "loss": loss, "omega": omega}
+        param = {"W": param["W"] + diffW, "A": param["A"] + diffA, "b": param["b"] + diffb}
+        return {"param": param, "loss": loss, "omega": omega}

@@ -151,9 +151,9 @@ def main():
     train_data = train_data[:1800]
     ini = make_initial()
     gnn = GNN(15, 8, ini['x'])
-    res = momentum_sgd(gnn, 30, train_data, 0.001, ini["param"], 2, 30, 0.9)
+    res = momentum_sgd(gnn, 50, train_data, 0.001, ini["param"], 2, 50, 0.9)
     check_prediction(test, gnn, res["param"], 2)
-    res = sgd(gnn, 30, train_data, 0.001, ini["param"], 2, 30)
+    res = sgd(gnn, 50, train_data, 0.001, ini["param"], 2, 50)
     check_prediction(test, gnn, res["param"], 2)
 
 

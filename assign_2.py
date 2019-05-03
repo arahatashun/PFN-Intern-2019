@@ -24,7 +24,9 @@ def main():
     alpha = 0.001
     A = np.array([0.0, 0.0, 0.0, 0.0]).reshape(4, 1)
     b = 0
-    g.GD(alpha, W, A, b, y, 1,g.get_adjacency_matrix(edge))
+    param = {"W": W, "A":A, "b":b}
+    g.GD(alpha, param, y, 1, g.get_adjacency_matrix(edge))
+
 if __name__ == '__main__':
     main()
 

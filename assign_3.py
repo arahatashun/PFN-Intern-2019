@@ -114,6 +114,23 @@ def momentum_sgd(gnn, batchsize, train_data, alpha, W, A, b, T, epochs, eta):
         tmp_train = copy.deepcopy(train_data)
     return res
 
+def check_prediction(test,param):
+    """
+
+    :param test:
+    :param param:
+    :return:
+    """
+    ntest = len(test)
+    pos = 0
+    for i in range(ntest):
+        label = test[i]['label']
+        p = gnn.predict(W,A,b,T,test[adjacency_matrix])
+        if(p == label):
+            pos++
+
+    return pos/ntest
+
 def make_initial():
     D = 8
     N = 15
@@ -126,9 +143,11 @@ def make_initial():
 def main():
     train_data = read_train()
     random.shuffle(train_data)
+    test = train_data[1800:]
+    train_data = train_data[:1800]
     ini = make_initial()
     gnn = GNN(15, 8, ini['x'])
-    momentum_sgd(gnn, 30, train_data, 0.001, ini["W"], ini["A"], ini["b"], 2, 10, 0.9)
+    res = momentum_sgd(gnn, 30, train_data, 0.001, ini["W"], ini["A"], ini["b"], 2, 2, 0.9)
     sgd(gnn, 30, train_data, 0.001, ini["W"], ini["A"], ini["b"], 2, 10)
 
 

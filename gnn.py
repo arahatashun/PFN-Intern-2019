@@ -103,20 +103,32 @@ class GNN:
             except RuntimeWarning as e:
                 return 1.0/-x
 
-    def calc_prob(self, W, A, b, T, adjacency_matrix):
+    def calc_prob(self, param, T, adjacency_matrix):
         """ calculate probability
 
-        :param W: weight matrix of graph
-        :param A: parameter of classifier R^D vector
-        :param b: parameter of classifier R
+        :param param:
         :param T:# step of aggregation
         :return p: probability
         """
-        assert A.shape == (self.D, 1), """dimension mismatch"""
-        s = A.T @ self.readout_all(W, T, adjacency_matrix) + b
+        assert param["A"].shape == (self.D, 1), """dimension mismatch"""
+        s = param["A"].T @ self.readout_all(param["W"], T, adjacency_matrix) + param["b"]
         p = self.sigmoid(s)
         assert p.shape == (1, 1), "dimension mismatch in calc_prob"
         return p
+
+    def predict(self, param, T, adjacency_matrix):
+        """ predict label
+
+        :param param: dict
+        :param T:
+        :param adjacency_matrix:
+        :return:
+        """
+        p = self.calc_prob(param, T, adjacency_matrix)
+        if p > 1/2:
+            return 1
+        else:
+            return 0
 
     def loss(self, y, p):
         """calculate loss of Graph
@@ -135,27 +147,30 @@ class GNN:
         assert l.shape == (1, 1), "dimension mismatch in loss"
         return l
 
-    def calc_gradient(self, W, A, b, y, T, adjacency_matrix):
+    def calc_gradient(self, param, y, T, adjacency_matrix):
         """ calculate gradient
 
-        :param W:initial W
-        :param A:initial A
-        :param b:initial b
+        :param param:
         :param y:label
         :param T: # step of aggregation
         :return:
         """
-        p1 = self.calc_prob(W, A, b, T, adjacency_matrix)
+        A = param["A"]
+        W = param["W"]
+        b = param["b"]
+        p1 = self.calc_prob(param, T, adjacency_matrix)
         l1 = self.loss(y, p1)
         gradA = np.zeros_like(A)
         for i in range(A.shape[0]):
             onehot = [0 if j != i else 1 for j in range(A.shape[0])]
             onehot = np.array(onehot).reshape(A.shape[0], 1)
-            p2 = self.calc_prob(W, A + EPS * onehot, b, T, adjacency_matrix)
+            tmp = {"W": W, "A":A + EPS * onehot, "b":b}
+            p2 = self.calc_prob(tmp, T, adjacency_matrix)
             l2 = self.loss(y, p2)
             grad = (l2 - l1) / EPS
             gradA[i] = grad
-        p2 = self.calc_prob(W, A, b + EPS, T, adjacency_matrix)
+        tmp = {"W": W, "A": A , "b": b + EPS}
+        p2 = self.calc_prob(tmp, T, adjacency_matrix)
         l2 = self.loss(y, p2)
         gradB = (l2 - l1) / EPS
         tmpW = np.copy(W)
@@ -165,7 +180,8 @@ class GNN:
                 onehot = [0 if k != j else 1 for k in range(W.shape[1])]
                 onehot = np.array(onehot).reshape(1, W.shape[1])
                 tmpW[i, :] = EPS * onehot
-                p2 = self.calc_prob(tmpW, A, b, T, adjacency_matrix)
+                tmp = {"W": tmpW, "A": A , "b": b}
+                p2 = self.calc_prob(tmp, T, adjacency_matrix)
                 l2 = self.loss(y, p2)
                 grad = (l2 - l1) / EPS
                 gradW[i][j] = grad
@@ -173,64 +189,59 @@ class GNN:
         grad = {"A": gradA, "b": gradB, "W": gradW, "loss": l1}
         return grad
 
-    def GD(self, alpha, W, A, b, y, T, adjacency_matrix):
+    def GD(self, alpha, param, y, T, adjacency_matrix):
         """ calculate gradient
 
         :param alpha:learing rate
-        :param W:initial W
-        :param A:initial A
-        :param b:initial b
+        :param param:dict
         :param y:label
         :param T:# step of aggregation
         :return:
         """
-        p = self.calc_prob(W, A, b, T, adjacency_matrix)
+        p = self.calc_prob(param, T, adjacency_matrix)
         l = self.loss(y, p)
         itr = 0
         print("iteration:", itr, " ,loss:", l[0][0])
         while l >= 0.01:
-            grad = self.calc_gradient(W, A, b, y, T, adjacency_matrix)
-            W = W - alpha * grad["W"]
-            A = A - alpha * grad["A"]
-            b = b - alpha * grad["b"]
+            grad = self.calc_gradient(param, y, T, adjacency_matrix)
+            W = param["W"] - alpha * grad["W"]
+            A = param["A"] - alpha * grad["A"]
+            b = param["b"] - alpha * grad["b"]
+            param = {"W": W, "A": A, "b": b}
             itr += 1
             print("iteration:", itr, " ,loss:", float(grad['loss']))
 
-    def SGD(self, alpha, W, A, b, T, batch):
+    def SGD(self, alpha, param, T, batch):
         """ Stochastic gradient descent on minibatch
 
         :param alpha:learning rate
-        :param W:weight matrix
-        :param A:parameter
-        :param b:parameter
+        :param param:dict
         :param T:# step of aggregation
         :param batch:list of dict
         :return:
         """
         B = len(batch) # Batch size
         assert B >= 1, "batch size must be >= 1"+str(batch)
-        sumW = np.zeros_like(W)
-        sumA = np.zeros_like(A)
+        sumW = np.zeros_like(param["W"])
+        sumA = np.zeros_like(param["A"])
         sumb = 0
         loss = 0
         for i in range(B):
-            grad = self.calc_gradient(W, A, b, batch[i]['label'], T, batch[i]['adjacency_matrix'])
+            grad = self.calc_gradient(param, batch[i]['label'], T, batch[i]['adjacency_matrix'])
             sumW += grad["W"]
             sumA += grad["A"]
             sumb += grad["b"]
             loss += grad["loss"]
-        W = W - alpha/B * sumW
-        A = A - alpha/B * sumA
-        b = b - alpha/B * sumb
+        W = param["W"] - alpha/B * sumW
+        A = param["A"] - alpha/B * sumA
+        b = param["b"] - alpha/B * sumb
         return {"W": W, "A": A, "b": b, "loss": loss}
 
-    def Momentum_SGD(self, alpha, W, A, b, T, batch, omega, eta):
+    def Momentum_SGD(self, alpha, param, T, batch, omega, eta):
         """ Momentum Stochastic gradient descent on minibatch
 
         :param alpha:learning rate
-        :param W:weight matrix
-        :param A:parameter
-        :param b:parameter
+        :param param:
         :param T:# step of aggregation
         :param batch:list of dict
         :param omega:diff of previous step
@@ -239,23 +250,23 @@ class GNN:
         """
         B = len(batch) # Batch size
         assert B >= 1, "batch size must be >= 1"+str(batch)
-        sumW = np.zeros_like(W)
-        sumA = np.zeros_like(A)
+        sumW = np.zeros_like(param["W"])
+        sumA = np.zeros_like(param["A"])
         sumb = 0
         loss = 0
         for i in range(B):
-            grad = self.calc_gradient(W, A, b, batch[i]['label'], T, batch[i]['adjacency_matrix'])
+            grad = self.calc_gradient(param, batch[i]['label'], T, batch[i]['adjacency_matrix'])
             sumW += grad["W"]
             sumA += grad["A"]
             sumb += grad["b"]
             loss += grad["loss"]
-        diffW =  - alpha/B * sumW + eta * omega["W"]
-        diffA =  - alpha/B * sumA + eta * omega["A"]
-        diffb =  - alpha/B * sumb + eta * omega["b"]
+        diffW = - alpha/B * sumW + eta * omega["W"]
+        diffA = - alpha/B * sumA + eta * omega["A"]
+        diffb = - alpha/B * sumb + eta * omega["b"]
         omega["W"] = diffW
         omega["A"] = diffA
         omega["b"] = diffb
-        W += diffW
-        A += diffA
-        b += diffb
+        W = param["W"] + diffW
+        A = param["A"] + diffA
+        b = param["b"] + diffb
         return {"W": W, "A": A, "b": b, "loss": loss, "omega": omega}

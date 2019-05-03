@@ -4,34 +4,35 @@
 """Graph Neural Network file"""
 import numpy as np
 import warnings
+
 EPS = 0.001
+
 
 class GNN:
     """Graph neural network class"""
-    def __init__(self, N, D, edge, x, W):
+
+    def __init__(self, N, D, x, W):
         """ constructor
 
         :param N:　# of vetex
         :param D: dimension of x
-        :param edge: undirected edge list
         :param x: x on node
         :param W: weight matrix
         """
 
         self.N = N
         self.D = D
-        self.edge = edge
-        self.adjacency_matrix = self.get_adjacency_matrix()
         self.x = x
         self.W = W
 
-    def get_adjacency_matrix(self):
+    def get_adjacency_matrix(self, edge):
         """make adjacency matrix
+        :param edge: undirected edge list
         :return m: adjacency matrix
         """
         m = [[0] * self.N for i in range(self.N)]
-        edge = [[self.edge[i][j] - 1 for j in range(len(self.edge[i]))] for i in range(len(self.edge))]
-        for path in edge:
+        n_edge = [[edge[i][j] - 1 for j in range(len(edge[i]))] for i in range(len(edge))]
+        for path in n_edge:
             m[path[0]][path[1]] = 1
             m[path[1]][path[0]] = 1
         m = np.array(m)
@@ -42,17 +43,18 @@ class GNN:
         y = np.maximum(0, x)
         return y
 
-    def aggregate_1(self, x):
+    def aggregate_1(self, x, adjacency_matrix):
         """Aggregation 1
 
         :param x:feature vector on vertex
+        :param adjacency_matrix:
         :return a:D times N matrix
         """
         assert x.shape == (self.D, self.N), """x dimension mismatch in aggregate1"""
         a = np.zeros((self.D, self.N))
         for v in range(self.N):
             for w in range(self.N):
-                if (self.adjacency_matrix[v][w] == 1):
+                if (adjacency_matrix[v][w] == 1):
                     a[:, v] += x[:, w]
         return a
 
@@ -65,7 +67,7 @@ class GNN:
         """
         new_x = np.zeros((self.D, self.N))
         for v in range(self.N):
-            new_x[:, v] = self.ReLU(W @ a[:,v])
+            new_x[:, v] = self.ReLU(W @ a[:, v])
         return new_x
 
     def readout(self, x):
@@ -79,7 +81,7 @@ class GNN:
             h += x[:, v].reshape(self.D, 1)
         return h
 
-    def readout_all(self, W, T):
+    def readout_all(self, W, T, adjacency_matrix):
         """ aggragation and readout
 
         :param W:weight matrix
@@ -87,7 +89,7 @@ class GNN:
         :return h:
         """
         for i in range(T):
-            a = self.aggregate_1(self.x)
+            a = self.aggregate_1(self.x, adjacency_matrix)
             nx = self.aggregate_2(W, a)
         h = self.readout(nx)
         return h
@@ -96,7 +98,7 @@ class GNN:
     def sigmoid(x):
         return 1.0 / (1.0 + np.exp(-x))
 
-    def calc_prob(self, W, A, b, T):
+    def calc_prob(self, W, A, b, T, adjacency_matrix):
         """ calculate probability
 
         :param W: weight matrix of graph
@@ -106,7 +108,7 @@ class GNN:
         :return p: probability
         """
         assert A.shape == (self.D, 1), """dimension mismatch"""
-        s = A.T @ self.readout_all(W, T) + b
+        s = A.T @ self.readout_all(W, T, adjacency_matrix) + b
         p = self.sigmoid(s)
         assert p.shape == (1, 1), "dimension mismatch in calc_prob"
         return p
@@ -125,12 +127,11 @@ class GNN:
                 l = -y * np.log(p) - (1 - y) * np.log(1 - p)
             except RuntimeWarning as e:
                 print(e)
-                l = y * np.log(1 + np.exp(-p)) + (1-y) * np.log(1 + np.exp(p))
+                l = y * np.log(1 + np.exp(-p)) + (1 - y) * np.log(1 + np.exp(p))
         assert l.shape == (1, 1), "dimension mismatch in loss"
         return l
 
-
-    def calc_gradient(self, W, A, b, y, T):
+    def calc_gradient(self, W, A, b, y, T, adjacency_matrix):
         """ calculate gradient
 
         :param W:initial W
@@ -140,17 +141,17 @@ class GNN:
         :param T: # step of aggregation
         :return:
         """
-        p1 = self.calc_prob(W, A, b, T)
+        p1 = self.calc_prob(W, A, b, T,adjacency_matrix)
         l1 = self.loss(y, p1)
         gradA = np.zeros_like(A)
         for i in range(A.shape[0]):
-            onehot = [0 if j !=i else 1 for j in range(A.shape[0])]
+            onehot = [0 if j != i else 1 for j in range(A.shape[0])]
             onehot = np.array(onehot).reshape(A.shape[0], 1)
-            p2 = self.calc_prob(W, A + EPS * onehot, b, T)
+            p2 = self.calc_prob(W, A + EPS * onehot, b, T, adjacency_matrix)
             l2 = self.loss(y, p2)
-            grad = (l2-l1)/EPS
+            grad = (l2 - l1) / EPS
             gradA[i] = grad
-        p2 = self.calc_prob(W, A, b + EPS, T)
+        p2 = self.calc_prob(W, A, b + EPS, T, adjacency_matrix)
         l2 = self.loss(y, p2)
         gradB = (l2 - l1) / EPS
         tmpW = np.copy(W)
@@ -159,8 +160,8 @@ class GNN:
             for j in range(W.shape[1]):
                 onehot = [0 if k != j else 1 for k in range(W.shape[1])]
                 onehot = np.array(onehot).reshape(1, W.shape[1])
-                tmpW[i,:] = EPS * onehot
-                p2 = self.calc_prob(tmpW, A, b, T)
+                tmpW[i, :] = EPS * onehot
+                p2 = self.calc_prob(tmpW, A, b, T, adjacency_matrix)
                 l2 = self.loss(y, p2)
                 grad = (l2 - l1) / EPS
                 gradW[i][j] = grad
@@ -168,7 +169,7 @@ class GNN:
         grad = {"A": gradA, "b": gradB, "W": gradW}
         return grad
 
-    def GD(self, alpha, W, A, b, y, T):
+    def GD(self, alpha, W, A, b, y, T, adjacency_matrix):
         """ calculate gradient
 
         :param alpha:learing rate
@@ -179,16 +180,19 @@ class GNN:
         :param T:# step of aggregation
         :return:
         """
-        p = self.calc_prob(W, A, b, T)
+        p = self.calc_prob(W, A, b, T, adjacency_matrix)
         l = self.loss(y, p)
         itr = 0
         print("iteration:", itr, " ,loss:", l[0][0])
-        while(l>=0.01):
-             grad = self.calc_gradient(W, A, b, y, T)
-             W = W - alpha * grad["W"]
-             A = A - alpha * grad["A"]
-             b = b - alpha * grad["b"]
-             p = self.calc_prob(W, A, b, T)
-             l = self.loss(y, p)
-             itr += 1
-             print("iteration:", itr, " ,loss:",l[0][0])
+        while (l >= 0.01):
+            grad = self.calc_gradient(W, A, b, y, T, adjacency_matrix)
+            W = W - alpha * grad["W"]
+            A = A - alpha * grad["A"]
+            b = b - alpha * grad["b"]
+            p = self.calc_prob(W, A, b, T, adjacency_matrix)
+            l = self.loss(y, p)
+            itr += 1
+            print("iteration:", itr, " ,loss:", l[0][0])
+
+    def SGD(self, alpha, W, A, b, y, T):
+        pass

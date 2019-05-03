@@ -223,3 +223,39 @@ class GNN:
         A = A - alpha/B * sumA
         b = b - alpha/B * sumb
         return {"W": W, "A": A, "b": b, "loss": loss}
+
+    def Momentum_SGD(self, alpha, W, A, b, T, batch, omega, eta):
+        """ Momentum Stochastic gradient descent on minibatch
+
+        :param alpha:learning rate
+        :param W:weight matrix
+        :param A:parameter
+        :param b:parameter
+        :param T:# step of aggregation
+        :param batch:list of dict
+        :param omega:diff of previous step
+        :param eta: mement parameter
+        :return:
+        """
+        B = len(batch) # Batch size
+        assert B >= 1, "batch size must be >= 1"+str(batch)
+        sumW = np.zeros_like(W)
+        sumA = np.zeros_like(A)
+        sumb = 0
+        loss = 0
+        for i in range(B):
+            grad = self.calc_gradient(W, A, b, batch[i]['label'], T, batch[i]['adjacency_matrix'])
+            sumW += grad["W"]
+            sumA += grad["A"]
+            sumb += grad["b"]
+            loss += grad["loss"]
+        diffW =  - alpha/B * sumW + eta * omega["W"]
+        diffA =  - alpha/B * sumA + eta * omega["A"]
+        diffb =  - alpha/B * sumb + eta * omega["b"]
+        omega["W"] = diffW
+        omega["A"] = diffA
+        omega["b"] = diffb
+        W += diffW
+        A += diffA
+        b += diffb
+        return {"W": W, "A": A, "b": b, "loss": loss, "omega": omega}

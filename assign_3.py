@@ -64,8 +64,8 @@ def sgd(gnn, batchsize, train_data, alpha, W, A, b, T, epochs):
     num_train = len(train_data)
     tmp_train = copy.deepcopy(train_data)
     # print(num_train, batchsize)
-    loss = 0
     for epoch in range(epochs):
+        loss = 0
         for i in range(int(num_train/batchsize)-1):
             mini_batch = sampling(batchsize, tmp_train)
             res = gnn.SGD(alpha, W, A, b, T, mini_batch)
@@ -74,15 +74,50 @@ def sgd(gnn, batchsize, train_data, alpha, W, A, b, T, epochs):
             b = res["b"]
             loss += res["loss"]
             # print("iteration:",i+1,"loss:",res["loss"])
-        print("epoch:", epoch+1, ", loss:", loss)
+        print("epoch:", epoch+1, ", loss:", *loss)
         tmp_train = copy.deepcopy(train_data)
     return res
 
+def momentum_sgd(gnn, batchsize, train_data, alpha, W, A, b, T, epochs, eta):
+    """Momentum sgd
+
+    :param gnn:
+    :param batchsize:
+    :param train_data:
+    :param alpha:
+    :param W:
+    :param A:
+    :param b:
+    :param T:
+    :param epochs:
+    :param eta:
+    :return:
+    """
+    num_train = len(train_data)
+    tmp_train = copy.deepcopy(train_data)
+    # print(num_train, batchsize)
+    omega_W = np.zeros_like(W)
+    omega_A = np.zeros_like(A)
+    omega_b = 0
+    omega = {"W":omega_W,"A":omega_A,"b":omega_b}
+    for epoch in range(epochs):
+        loss = 0
+        for i in range(int(num_train / batchsize) - 1):
+            mini_batch = sampling(batchsize, tmp_train)
+            res = gnn.Momentum_SGD(alpha, W, A, b, T, mini_batch, omega, eta)
+            W = res["W"]
+            A = res["A"]
+            b = res["b"]
+            loss += res["loss"]
+            # print("iteration:",i+1,"loss:",res["loss"])
+        print("epoch:", epoch + 1, ", loss:", *loss)
+        tmp_train = copy.deepcopy(train_data)
+    return res
 
 def make_initial():
     D = 8
     N = 15
-    x = np.random.normal(0, 0.4, D * N).reshape(D, N)
+    x = np.array([[1, 0, 0, 0, 0, 0, 0, 0] for i in range(N)]).reshape(D, N)
     A = np.random.normal(0, 0.4, D).reshape(D, 1)
     W = np.random.normal(0, 0.4, D * D).reshape(D, D)
     b = 0
@@ -93,7 +128,8 @@ def main():
     random.shuffle(train_data)
     ini = make_initial()
     gnn = GNN(15, 8, ini['x'])
-    sgd(gnn, 20, train_data, 0.001, ini["W"], ini["A"], ini["b"], 2, 10)
+    momentum_sgd(gnn, 30, train_data, 0.001, ini["W"], ini["A"], ini["b"], 2, 10, 0.9)
+    sgd(gnn, 30, train_data, 0.001, ini["W"], ini["A"], ini["b"], 2, 10)
 
 
 

@@ -4,7 +4,7 @@
 """Graph Neural Network file"""
 import numpy as np
 import warnings
-
+from joblib import Parallel, delayed
 EPS = 0.001
 
 
@@ -173,13 +173,13 @@ class GNN:
         p2 = self.calc_prob(tmp, T, adjacency_matrix)
         l2 = self.loss(y, p2)
         gradB = (l2 - l1) / EPS
-        tmpW = np.copy(W)
         gradW = np.zeros_like(W)
         for i in range(W.shape[0]):
             for j in range(W.shape[1]):
+                tmpW = np.copy(W)
                 onehot = [0 if k != j else 1 for k in range(W.shape[1])]
                 onehot = np.array(onehot).reshape(1, W.shape[1])
-                tmpW[i, :] = EPS * onehot
+                tmpW[i, :] = tmpW[i, :] + EPS * onehot
                 tmp = {"W": tmpW, "A": A, "b": b}
                 p2 = self.calc_prob(tmp, T, adjacency_matrix)
                 l2 = self.loss(y, p2)
@@ -226,8 +226,9 @@ class GNN:
         sumA = np.zeros_like(param["A"])
         sumb = 0
         loss = 0
+        res = Parallel(n_jobs=-1)([delayed(self.calc_gradient)(param, batch[i]['label'], T, batch[i]['adjacency_matrix']) for i in range(B)])
         for i in range(B):
-            grad = self.calc_gradient(param, batch[i]['label'], T, batch[i]['adjacency_matrix'])
+            grad = res[i]
             sumW += grad["W"]
             sumA += grad["A"]
             sumb += grad["b"]
@@ -255,8 +256,9 @@ class GNN:
         sumA = np.zeros_like(param["A"])
         sumb = 0
         loss = 0
+        res = Parallel(n_jobs=-1)([delayed(self.calc_gradient)(param, batch[i]['label'], T, batch[i]['adjacency_matrix']) for i in range(B)])
         for i in range(B):
-            grad = self.calc_gradient(param, batch[i]['label'], T, batch[i]['adjacency_matrix'])
+            grad = res[i]
             sumW += grad["W"]
             sumA += grad["A"]
             sumb += grad["b"]

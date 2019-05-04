@@ -8,6 +8,8 @@ from gnn import GNN
 import random
 import copy
 import matplotlib.pyplot as plt
+import pickle
+import seaborn as sns
 
 train_path = '../datasets/train/'
 NUM_TRAIN = 2000
@@ -167,28 +169,49 @@ def plot(sgd, msgd):
     :return:
     """
     fig = plt.figure()
-    ax = fig.add_subplot(1, 1, 1)
-    epochs = len(sgd)
+    ax1 = fig.add_subplot(1, 1, 1)
+    epochs = len(sgd["loss"])
     x = np.arange(epochs)
-    ax.plot(x, sgd["loss"], label="SGD loss")
-    ax.plot(x, sgd["train"], label="SGD train ac")
-    ax.plot(x, sgd["test"], label="SGD test ac")
-    ax.plot(x, mgd["loss"], label="MSGD loss")
-    ax.plot(x, msgd["train"], label="MSGD train ac")
-    ax.plot(x, msgd["test"], label="MSGD test ac")
-    ax.legend()
+    ax1.set_xlabel('epochs')
+    ln1 = ax1.plot(x, sgd["loss"], '-r', label="SGD loss")
+    ln2 = ax1.plot(x, msgd["loss"], '-b', label="MSGD loss")
+    ax1.set_ylabel('loss')
+    ax2 = ax1.twinx()
+    ln3 = ax2.plot(x, sgd["train"], '-g', label="SGD train ac")
+    ln4 = ax2.plot(x, sgd["test"], '-c',label="SGD test ac")
+    ln5 = ax2.plot(x, msgd["train"], '-m', label="MSGD train ac")
+    ln6 = ax2.plot(x, msgd["test"], '-y', label="MSGD test ac")
+    ax2.set_ylabel('accuracy')
+    lns = ln1 + ln2 + ln3 + ln4 + ln5 + ln6
+    labs = [l.get_label() for l in lns]
+    plt.tight_layout(rect=[0, 0, 0.75, 1])
+    ax1.legend(lns, labs, bbox_to_anchor=(1.04,1),  loc="upper left")
+    plt.savefig("output.pdf", bbox_inches="tight")
     plt.show()
 
 
 def main():
+
     train_data = read_train()
     random.shuffle(train_data)
-    test = train_data[1800:]
-    train_data = train_data[:1800]
+    test = train_data[1500:]
+    train_data = train_data[:1500]
     ini = make_initial()
     gnn = GNN(15, 8, ini['x'])
-    dmsgd = momentum_sgd(gnn, 50, train_data, 0.001, ini["param"], 2, 10, 0.9, test)
-    dsgd = sgd(gnn, 50, train_data, 0.001, ini["param"], 2, 10, test)
+    EPOCHS = 100
+    dmsgd = momentum_sgd(gnn, 50, train_data, 0.001, ini["param"], 2, EPOCHS, 0.9, test)
+    dsgd = sgd(gnn, 50, train_data, 0.001, ini["param"], 2, EPOCHS, test)
+    with open('sgd.pickle', 'wb') as handle:
+        pickle.dump(dsgd, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    with open('msgd.pickle', 'wb') as handle:
+        pickle.dump(dmsgd, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+    with open('sgd.pickle', 'rb') as handle:
+        dsgd = pickle.load(handle)
+    with open('msgd.pickle', 'rb') as handle:
+        dmsgd = pickle.load(handle)
+
+
     plot(dsgd, dmsgd)
 
 

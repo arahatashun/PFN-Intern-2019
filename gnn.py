@@ -271,3 +271,44 @@ class GNN:
         omega["b"] = - alpha / B * sumb + eta * omega["b"]
         param = {"W": param["W"] + omega["W"], "A": param["A"] + omega["A"], "b": param["b"] + omega["b"]}
         return {"param": param, "loss": loss / B, "omega": omega}
+
+    def ADAM(self, alpha, beta1, beta2, param, T, batch):
+        """ Adam optimization
+
+        :param alpha:
+        :param beta1:
+        :param beta2:
+        :param param:dict includes m v W A V
+        :param T:
+        :param batch:
+        :return:
+        """
+        B = len(batch)  # Batch size
+        EPSILON = 10 ** (-8)
+        assert B >= 1, "batch size must be >= 1" + str(batch)
+        gradW = np.zeros_like(param["W"])
+        gradA = np.zeros_like(param["A"])
+        gradb = 0
+        loss = 0
+        grad = {"W": gradW, "A": gradA, "b": gradb}
+        res = Parallel(n_jobs=-1)(
+            [delayed(self.calc_gradient)(param, batch[i]['label'], T, batch[i]['adjacency_matrix']) for i in range(B)])
+        for i in range(B):
+            grad["W"] += res[i]["W"] / B
+            grad["A"] += res[i]["A"] / B
+            grad["b"] += res[i]["b"] / B
+            loss += res[i]["loss"] / B
+        m = {}
+        m_hat = {}
+        v = {}
+        v_hat = {}
+        param["step"] = param["step"] + 1
+        for i in param["m"]:
+            m[i] = beta1 * param["m"][i] + (1 - beta1) * grad[i]
+            v[i] = beta2 * param["v"][i] + (1 - beta2) * np.square(grad[i])
+            m_hat[i] = m[i] / (1 - beta1 ** param["step"])
+            v_hat[i] = v[i] / (1 - beta2 ** param["step"])
+            param[i] = param[i] - alpha * m_hat[i] / (np.sqrt(v_hat[i]) + EPSILON)
+        param["m"] = m
+        param["v"] = v
+        return {"param": param, "loss": loss}

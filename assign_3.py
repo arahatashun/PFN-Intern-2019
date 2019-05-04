@@ -186,7 +186,7 @@ def plot(sgd, msgd):
     labs = [l.get_label() for l in lns]
     plt.tight_layout(rect=[0, 0, 0.75, 1])
     ax1.legend(lns, labs, bbox_to_anchor=(1.04, 1), loc="upper left")
-    plt.savefig("output.pdf", bbox_inches="tight")
+    plt.savefig("assignment3.pdf", bbox_inches="tight")
     plt.show()
 
 

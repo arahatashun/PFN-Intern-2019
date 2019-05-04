@@ -5,6 +5,7 @@
 import numpy as np
 import warnings
 from joblib import Parallel, delayed
+
 EPS = 0.001
 
 
@@ -226,7 +227,8 @@ class GNN:
         sumA = np.zeros_like(param["A"])
         sumb = 0
         loss = 0
-        res = Parallel(n_jobs=-1)([delayed(self.calc_gradient)(param, batch[i]['label'], T, batch[i]['adjacency_matrix']) for i in range(B)])
+        res = Parallel(n_jobs=-1)(
+            [delayed(self.calc_gradient)(param, batch[i]['label'], T, batch[i]['adjacency_matrix']) for i in range(B)])
         for i in range(B):
             grad = res[i]
             sumW += grad["W"]
@@ -237,7 +239,7 @@ class GNN:
         A = param["A"] - alpha / B * sumA
         b = param["b"] - alpha / B * sumb
         param = {"W": W, "A": A, "b": b}
-        return {"param": param, "loss": loss}
+        return {"param": param, "loss": loss / B}
 
     def Momentum_SGD(self, alpha, param, T, batch, omega, eta):
         """ Momentum Stochastic gradient descent on minibatch
@@ -256,7 +258,8 @@ class GNN:
         sumA = np.zeros_like(param["A"])
         sumb = 0
         loss = 0
-        res = Parallel(n_jobs=-1)([delayed(self.calc_gradient)(param, batch[i]['label'], T, batch[i]['adjacency_matrix']) for i in range(B)])
+        res = Parallel(n_jobs=-1)(
+            [delayed(self.calc_gradient)(param, batch[i]['label'], T, batch[i]['adjacency_matrix']) for i in range(B)])
         for i in range(B):
             grad = res[i]
             sumW += grad["W"]
@@ -267,4 +270,4 @@ class GNN:
         omega["A"] = - alpha / B * sumA + eta * omega["A"]
         omega["b"] = - alpha / B * sumb + eta * omega["b"]
         param = {"W": param["W"] + omega["W"], "A": param["A"] + omega["A"], "b": param["b"] + omega["b"]}
-        return {"param": param, "loss": loss, "omega": omega}
+        return {"param": param, "loss": loss / B, "omega": omega}

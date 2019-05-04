@@ -178,20 +178,19 @@ def plot(sgd, msgd):
     ax1.set_ylabel('loss')
     ax2 = ax1.twinx()
     ln3 = ax2.plot(x, sgd["train"], '-g', label="SGD train ac")
-    ln4 = ax2.plot(x, sgd["test"], '-c',label="SGD test ac")
+    ln4 = ax2.plot(x, sgd["test"], '-c', label="SGD test ac")
     ln5 = ax2.plot(x, msgd["train"], '-m', label="MSGD train ac")
     ln6 = ax2.plot(x, msgd["test"], '-y', label="MSGD test ac")
     ax2.set_ylabel('accuracy')
     lns = ln1 + ln2 + ln3 + ln4 + ln5 + ln6
     labs = [l.get_label() for l in lns]
     plt.tight_layout(rect=[0, 0, 0.75, 1])
-    ax1.legend(lns, labs, bbox_to_anchor=(1.04,1),  loc="upper left")
+    ax1.legend(lns, labs, bbox_to_anchor=(1.04, 1), loc="upper left")
     plt.savefig("output.pdf", bbox_inches="tight")
     plt.show()
 
 
 def main():
-
     train_data = read_train()
     random.shuffle(train_data)
     test = train_data[1500:]
@@ -210,7 +209,6 @@ def main():
         dsgd = pickle.load(handle)
     with open('msgd.pickle', 'rb') as handle:
         dmsgd = pickle.load(handle)
-
 
     plot(dsgd, dmsgd)
 

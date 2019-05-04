@@ -7,6 +7,7 @@ import numpy as np
 from gnn import GNN
 import random
 import copy
+import matplotlib.pyplot as plt
 
 train_path = '../datasets/train/'
 NUM_TRAIN = 2000
@@ -56,7 +57,7 @@ def sampling(B, train):
     return res
 
 
-def sgd(gnn, batchsize, train_data, alpha, param, T, epochs):
+def sgd(gnn, batchsize, train_data, alpha, param, T, epochs, test):
     """Stochastic Gradient descent
 
     :param gnn:gnn object
@@ -68,6 +69,7 @@ def sgd(gnn, batchsize, train_data, alpha, param, T, epochs):
     num_train = len(train_data)
     tmp_train = copy.deepcopy(train_data)
     # print(num_train, batchsize)
+    dict_list = {"loss": [], "train": [], "test": []}
     for epoch in range(epochs):
         loss = 0
         for i in range(int(num_train / batchsize) - 1):
@@ -76,12 +78,18 @@ def sgd(gnn, batchsize, train_data, alpha, param, T, epochs):
             param = res["param"]
             loss += res["loss"]
             # print("iteration:",i+1,"loss:",res["loss"])
-        print("epoch:", epoch + 1, ", loss:", loss[0][0])
+        test_accuracy = check_prediction(test, gnn, param, T)
+        train_accuracy = check_prediction(train_data, gnn, param, T)
+        print("epoch:", epoch + 1, ", loss:", loss[0][0],
+              ", train:", '{:.2g}'.format(train_accuracy), "test:", '{:.2g}'.format(test_accuracy))
         tmp_train = copy.deepcopy(train_data)
-    return res
+        dict_list["loss"].append(loss[0][0])
+        dict_list["train"].append(train_accuracy)
+        dict_list["test"].append(test_accuracy)
+    return dict_list
 
 
-def momentum_sgd(gnn, batchsize, train_data, alpha, param, T, epochs, eta):
+def momentum_sgd(gnn, batchsize, train_data, alpha, param, T, epochs, eta, test):
     """Momentum sgd
 
     :param gnn:
@@ -101,6 +109,7 @@ def momentum_sgd(gnn, batchsize, train_data, alpha, param, T, epochs, eta):
     omega_A = np.zeros_like(param["A"])
     omega_b = 0
     omega = {"W": omega_W, "A": omega_A, "b": omega_b}
+    dict_list = {"loss": [], "train": [], "test": []}
     for epoch in range(epochs):
         loss = 0
         for i in range(int(num_train / batchsize) - 1):
@@ -110,9 +119,15 @@ def momentum_sgd(gnn, batchsize, train_data, alpha, param, T, epochs, eta):
             loss += res["loss"]
             omega = res["omega"]
             # print("iteration:",i+1,"loss:",res["loss"])
-        print("epoch:", epoch + 1, ", loss:", loss[0][0])
+        test_accuracy = check_prediction(test, gnn, param, T)
+        train_accuracy = check_prediction(train_data, gnn, param, T)
+        print("epoch:", epoch + 1, ", loss:", loss[0][0], ", train:",
+              '{:.2g}'.format(train_accuracy), "test:", '{:.2g}'.format(test_accuracy))
         tmp_train = copy.deepcopy(train_data)
-    return res
+        dict_list["loss"].append(loss[0][0])
+        dict_list["train"].append(train_accuracy)
+        dict_list["test"].append(test_accuracy)
+    return dict_list
 
 
 def check_prediction(test, gnn, param, T):
@@ -127,9 +142,9 @@ def check_prediction(test, gnn, param, T):
     for i in range(ntest):
         label = test[i]['label']
         p = gnn.predict(param, T, test[i]["adjacency_matrix"])
-        if (p == label):
+        if p == label:
             pos = pos + 1
-    print(pos / ntest)
+    # print(pos / ntest)
     return pos / ntest
 
 
@@ -144,6 +159,27 @@ def make_initial():
     return {"x": x, "param": param}
 
 
+def plot(sgd, msgd):
+    """
+
+    :param sgd:
+    :param msgd:
+    :return:
+    """
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1)
+    epochs = len(sgd)
+    x = np.arange(epochs)
+    ax.plot(x, sgd["loss"], label="SGD loss")
+    ax.plot(x, sgd["train"], label="SGD train ac")
+    ax.plot(x, sgd["test"], label="SGD test ac")
+    ax.plot(x, mgd["loss"], label="MSGD loss")
+    ax.plot(x, msgd["train"], label="MSGD train ac")
+    ax.plot(x, msgd["test"], label="MSGD test ac")
+    ax.legend()
+    plt.show()
+
+
 def main():
     train_data = read_train()
     random.shuffle(train_data)
@@ -151,10 +187,9 @@ def main():
     train_data = train_data[:1800]
     ini = make_initial()
     gnn = GNN(15, 8, ini['x'])
-    res = momentum_sgd(gnn, 50, train_data, 0.001, ini["param"], 2, 50, 0.9)
-    check_prediction(test, gnn, res["param"], 2)
-    res = sgd(gnn, 50, train_data, 0.001, ini["param"], 2, 50)
-    check_prediction(test, gnn, res["param"], 2)
+    dmsgd = momentum_sgd(gnn, 50, train_data, 0.001, ini["param"], 2, 10, 0.9, test)
+    dsgd = sgd(gnn, 50, train_data, 0.001, ini["param"], 2, 10, test)
+    plot(dsgd, dmsgd)
 
 
 if __name__ == '__main__':

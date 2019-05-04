@@ -52,6 +52,7 @@ def adam(gnn, batchsize, train_data, alpha, beta1, beta2, param, T, epochs, test
         dict_list["test"].append(test_accuracy)
     return dict_list
 
+
 def plot(adam, msgd):
     """
 
@@ -81,7 +82,6 @@ def plot(adam, msgd):
     # plt.show()
 
 
-
 def read_graph(path, index):
     """ read graph and return dict
 
@@ -100,6 +100,7 @@ def read_graph(path, index):
     # print(ad_matrix)
     return {'n': n, 'adjacency_matrix': ad_matrix, 'index': index}
 
+
 def read_test():
     l = []
     for i in range(NUM_TEST):
@@ -108,7 +109,6 @@ def read_test():
 
 
 def main():
-
     train_data = read_train()
     random.shuffle(train_data)
     test = train_data[1500:]
@@ -121,17 +121,18 @@ def main():
                              ini["param"]["b"])}
     ini["param"]["v"] = copy.deepcopy(ini["param"]["m"])
     ini["param"]["step"] = 0
-    """
+
     adgd = adam(gnn, 50, train_data, 0.001, 0.9, 0.999,
                 ini["param"], 2, EPOCHS, test)
+    '''
     with open('adgd.pickle', 'wb') as handle:
         pickle.dump(adgd, handle, protocol=pickle.HIGHEST_PROTOCOL)
-    """
     with open('msgd.pickle', 'rb') as handle:
         dmsgd = pickle.load(handle)
     with open('adgd.pickle', 'rb') as handle:
         adgd = pickle.load(handle)
     plot(adgd, dmsgd)
+    '''
     test = read_test()
     ans = []
     for i in range(NUM_TEST):
@@ -139,7 +140,6 @@ def main():
     with open('prediction.txt', 'w') as f:
         for item in ans:
             f.write("%s\n" % item)
-
 
 
 if __name__ == '__main__':

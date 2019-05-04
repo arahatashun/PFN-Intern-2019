@@ -13,7 +13,9 @@ import seaborn as sns
 from assign_3 import read_train, make_initial, sampling, check_prediction
 
 train_path = '../datasets/train/'
+test_path = '../datasets/test/'
 NUM_TRAIN = 2000
+NUM_TEST = 500
 random.seed(1)
 np.random.seed(1)
 
@@ -44,6 +46,7 @@ def adam(gnn, batchsize, train_data, alpha, beta1, beta2, param, T, epochs, test
         print("epoch:", epoch + 1, ", loss:", loss[0][0],
               ", train:", '{:.2g}'.format(train_accuracy), "test:", '{:.2g}'.format(test_accuracy))
         tmp_train = copy.deepcopy(train_data)
+        dict_list["param"] = param
         dict_list["loss"].append(loss[0][0])
         dict_list["train"].append(train_accuracy)
         dict_list["test"].append(test_accuracy)
@@ -58,7 +61,7 @@ def plot(adam, msgd):
     """
     fig = plt.figure()
     ax1 = fig.add_subplot(1, 1, 1)
-    epochs = len(sgd["loss"])
+    epochs = len(adam["loss"])
     x = np.arange(epochs)
     ax1.set_xlabel('epochs')
     ln1 = ax1.plot(x, adam["loss"], '-r', label="ADAM loss")
@@ -75,9 +78,37 @@ def plot(adam, msgd):
     plt.tight_layout(rect=[0, 0, 0.75, 1])
     ax1.legend(lns, labs, bbox_to_anchor=(1.04, 1), loc="upper left")
     plt.savefig("adam.pdf", bbox_inches="tight")
-    plt.show()
+    # plt.show()
+
+
+
+def read_graph(path, index):
+    """ read graph and return dict
+
+    :param path:
+    :param i: index
+    :return: dict
+    """
+    n = 0
+    with open(path + str(index) + '_graph.txt') as f:
+        l = f.readlines()
+        n = int(l[0])
+    # print(n)
+    ad_matrix = np.zeros((n, n))
+    for i in range(n):
+        ad_matrix[i] = np.array(l[i + 1].split())
+    # print(ad_matrix)
+    return {'n': n, 'adjacency_matrix': ad_matrix, 'index': index}
+
+def read_test():
+    l = []
+    for i in range(NUM_TEST):
+        l.append(read_graph(test_path, i))
+    return l
+
 
 def main():
+
     train_data = read_train()
     random.shuffle(train_data)
     test = train_data[1500:]
@@ -90,10 +121,26 @@ def main():
                              ini["param"]["b"])}
     ini["param"]["v"] = copy.deepcopy(ini["param"]["m"])
     ini["param"]["step"] = 0
+    """
     adgd = adam(gnn, 50, train_data, 0.001, 0.9, 0.999,
                 ini["param"], 2, EPOCHS, test)
     with open('adgd.pickle', 'wb') as handle:
         pickle.dump(adgd, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    """
+    with open('msgd.pickle', 'rb') as handle:
+        dmsgd = pickle.load(handle)
+    with open('adgd.pickle', 'rb') as handle:
+        adgd = pickle.load(handle)
+    plot(adgd, dmsgd)
+    test = read_test()
+    ans = []
+    for i in range(NUM_TEST):
+        ans.append(gnn.predict(adgd["param"], 2, test[i]["adjacency_matrix"]))
+    with open('prediction.txt', 'w') as f:
+        for item in ans:
+            f.write("%s\n" % item)
+
+
 
 if __name__ == '__main__':
     main()

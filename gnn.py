@@ -210,6 +210,7 @@ class GNN:
             b = param["b"] - alpha * grad["b"]
             param = {"W": W, "A": A, "b": b}
             itr += 1
+            l = grad['loss']
             print("iteration:", itr, " ,loss:", float(grad['loss']))
 
     def SGD(self, alpha, param, T, batch):

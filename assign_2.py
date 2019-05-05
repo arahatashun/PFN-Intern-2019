@@ -32,5 +32,4 @@ def main():
 if __name__ == '__main__':
     main()
 
-# iteration: 103148  ,loss: 0.0099999332089
-# を確認
+# gdでlossが0.01以下になることを確認
